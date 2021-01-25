@@ -74,6 +74,7 @@ class mapi_quiz_external extends external_api
         require_once($CFG->dirroot . "/mod/quiz/lib.php");
         require_once($CFG->libdir . '/completionlib.php');
         require_once($CFG->dirroot . '/mod/quiz/locallib.php');
+        require_once($CFG->dirroot . '/course/lib.php');
 
         $params = self::validate_parameters(self::create_quiz_section_parameters(), array('quiz' => $quiz));
         $transaction = $DB->start_delegated_transaction(); //If an exception is thrown in the below code, all DB queries in this code will be rollback.

@@ -49,13 +49,42 @@ $functions = array(
     ),
 
     'qmapi_question_create_question' => array(
-        'classname' => 'mapi_question_external',
-        'methodname' => 'create_question',
-        'description' => 'create question for given quiz',
-        'type' => 'write',
+        'classname'     => 'mapi_question_external',
+        'methodname'    => 'create_question',
+        'description'   => 'create question for given quiz',
+        'type'          => 'write',
         'classpath'     => 'local/qmapi/questions/externallib.php',
         'capabilities'  => 'moodle/question:add', 'moodle/question:editall', 'moodle/question:viewall', 'moodle/course:visibility', 'mod/quiz:view', 'mod/quiz:manage', 'mod/quiz:viewreports'
     ),
+
+
+    'qmapi_category_question_create' => array(
+        'classname'     => 'mapi_question_category_external',
+        'methodname'    => 'create_question_category',
+        'description'   => 'create question category in question bank',
+        'type'          => 'write',
+        'classpath'     => 'local/qmapi/questions/categories/externallib.php',
+        'capabilities'  => 'moodle/question:managecategory'
+    ),
+
+    'qmapi_category_question_edit' => array(
+        'classname'     => 'mapi_question_category_external',
+        'methodname'    => 'edit_question_category',
+        'description'   => 'edit question category in question bank',
+        'type'          => 'write',
+        'classpath'     => 'local/qmapi/questions/categories/externallib.php',
+        'capabilities'  => 'moodle/question:managecategory'
+    ),
+
+    'qmapi_category_question_delete' => array(
+        'classname'     => 'mapi_question_category_external',
+        'methodname'    => 'delete_question_category',
+        'description'   => 'delete question category in question bank',
+        'type'          => 'write',
+        'classpath'     => 'local/qmapi/questions/categories/externallib.php',
+        'capabilities'  => 'moodle/question:managecategory'
+    ),
+
 );
 
 //We define the services to install as pre-build services. A pre-build service is not editable by administrator.
