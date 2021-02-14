@@ -33,7 +33,6 @@ require_once($CFG->dirroot . '/question/engine/lib.php');
 require_once($CFG->dirroot . '/question/engine/datalib.php');
 require_once($CFG->libdir . '/questionlib.php');
 require_once($CFG->dirroot . '/lib/accesslib.php');
-require_once($CFG->dirroot . '/local/qmapi/questions/helper/question_helper.php');
 require_once($CFG->dirroot . '/lib/questionlib.php');
 
 /**
@@ -148,7 +147,133 @@ class mapi_question_category_external extends external_api
     }
 
 
+    public static function edit_question_category_parameters()
+    {
+        return new external_function_parameters(
+            array(
+                'category' => new external_multiple_structure(
+                    new external_single_structure(
+                        array(
+                            'id' => new external_value(PARAM_INT, 'question category id', VALUE_REQUIRED),
+                            'name' => new external_value(PARAM_TEXT, 'question category name', VALUE_OPTIONAL),
+                            'info' => new external_value(PARAM_RAW, 'question category info', VALUE_OPTIONAL),
+                            'idnumber' => new external_value(PARAM_INT, 'question category id number', VALUE_OPTIONAL, VALUE_DEFAULT, NULL),
 
+                        )
+                    ),
+                    'edit question category for given id'
+                )
+            )
+        );
+    }
+
+    public static function edit_question_category($category)
+    {
+        global $DB;
+
+        $params = self::validate_parameters(self::edit_question_category_parameters(), array('category' => $category));
+        $transaction = $DB->start_delegated_transaction();
+
+        if ($DB->record_exists('question_categories', array('id' => $category[0]['id'])) == false) {
+            throw new invalid_parameter_exception('question category with given id doesnt exist.');
+        }
+        $coloums = $DB->get_columns('question_categories');
+        $parameters = [];
+        foreach ($coloums as $col) {
+
+            if (isset($category[0][$col->name])) {
+                $parameters[$col->name] = $category[0][$col->name];
+            }
+        }
+
+        $DB->update_record_raw('question_categories', $parameters);
+
+        $transaction->allow_commit();
+
+        $result['question_category_id'] = $category[0]['id'];
+        $result['message'] = 'question category updated successfully.';
+
+        return $result;
+    }
+
+
+    public static function edit_question_category_returns()
+    {
+        return new external_single_structure(
+            array(
+                'question_category_id' => new external_value(PARAM_INT, 'question category id'),
+                'message' => new external_value(PARAM_TEXT, 'question category response'),
+            )
+        );
+    }
+
+
+
+    public static function get_question_category_parameters()
+    {
+        return new external_function_parameters(
+            array(
+                'category' => new external_multiple_structure(
+                    new external_single_structure(
+                        array(
+                            'id' => new external_value(PARAM_INT, 'question category id', VALUE_REQUIRED),
+                        )
+                    ),
+                    "get question category and it's subcategories for given id"
+                )
+            )
+        );
+    }
+
+
+
+    public static function get_question_category($category)
+    {
+        global $DB;
+
+        $params = self::validate_parameters(self::edit_question_category_parameters(), array('category' => $category));
+        $transaction = $DB->start_delegated_transaction();
+
+        if ($DB->record_exists('question_categories', array('id' => $category[0]['id'])) == false) {
+            throw new invalid_parameter_exception('question category with given id doesnt exist.');
+        }
+
+        $questionCategory = $DB->get_record('question_categories', array('id' => $category[0]['id']));
+
+        $questions = $DB->get_records('question', array('category' => $category[0]['id']));
+
+
+        //TODO should implement for showing questions in  moodle response 
+        $question = [];
+        foreach ($questions as $item) {
+
+            $question = $item;
+        }
+        // print(json_decode($question));
+        // die();
+        $result = [];
+        $result['id'] = $category[0]['id'];
+        $result['name'] = $questionCategory->name;
+        $result['info'] = $questionCategory->info;
+        $result['questions'] = count($questions);
+        // $result['questions'] = $question;
+
+        $transaction->allow_commit();
+
+        return $result;
+    }
+
+    public static function get_question_category_returns()
+    {
+        return new external_single_structure(
+            array(
+                'id' => new external_value(PARAM_INT, 'question category id'),
+                'name' => new external_value(PARAM_TEXT, 'question category name'),
+                'info' => new external_value(PARAM_TEXT, 'question category info'),
+                'questions' => new external_value(PARAM_INT, 'list of questions related to the question category')
+            )
+        );
+    }
 
     public static function delete_question_category_parameters()
     {
@@ -210,67 +335,6 @@ class mapi_question_category_external extends external_api
     {
         return new external_single_structure(
             array(
-                'message' => new external_value(PARAM_TEXT, 'question category response'),
-            )
-        );
-    }
-
-
-    public static function edit_question_category_parameters()
-    {
-        return new external_function_parameters(
-            array(
-                'category' => new external_multiple_structure(
-                    new external_single_structure(
-                        array(
-                            'id' => new external_value(PARAM_INT, 'question category id', VALUE_REQUIRED),
-                            'name' => new external_value(PARAM_TEXT, 'question category name', VALUE_OPTIONAL),
-                            'info' => new external_value(PARAM_RAW, 'question category info', VALUE_OPTIONAL),
-                            'idnumber' => new external_value(PARAM_INT, 'question category id number', VALUE_OPTIONAL, VALUE_DEFAULT, NULL),
-
-                        )
-                    ),
-                    'edit question category for given id'
-                )
-            )
-        );
-    }
-
-    public static function edit_question_category($category)
-    {
-        global $DB;
-
-        $params = self::validate_parameters(self::edit_question_category_parameters(), array('category' => $category));
-        $transaction = $DB->start_delegated_transaction();
-
-        if ($DB->record_exists('question_categories', array('id' => $category[0]['id'])) == false) {
-            throw new invalid_parameter_exception('question category with given id doesnt exist.');
-        }
-        $coloums = $DB->get_columns('question_categories');
-        $parameters = [];
-        foreach ($coloums as $col) {
-
-            if (isset($category[0][$col->name])) {
-                $parameters[$col->name] = $category[0][$col->name];
-            }
-        }
-
-        $DB->update_record_raw('question_categories', $parameters);
-
-        $transaction->allow_commit();
-
-        $result['question_category_id'] = $category[0]['id'];
-        $result['message'] = 'question category updated successfully.';
-
-        return $result;
-    }
-
-
-    public static function edit_question_category_returns()
-    {
-        return new external_single_structure(
-            array(
-                'question_category_id' => new external_value(PARAM_INT, 'question category id'),
                 'message' => new external_value(PARAM_TEXT, 'question category response'),
             )
         );

@@ -28,7 +28,7 @@ $functions = array(
         'methodname'    => 'create_quiz_section',
         'description'   => 'Create Quiz/Exam for a given course',
         'type'          => 'write',
-        'classpath'     => 'local/qmapi/externallib.php',
+        'classpath'     => 'local/qmapi/quizes/externallib.php',
         'capabilities'  => 'mod/quiz:addinstance', 'moodle/course:create', 'moodle/course:visibility', 'mod/quiz:view', 'mod/quiz:addinstance', 'mod/quiz:attempt', 'mod/quiz:manage', 'mod/quiz:viewreports'
     ),
     'qmapi_quiz_edit_quiz_section' => array(
@@ -36,7 +36,7 @@ $functions = array(
         'methodname'    => 'edit_quiz_section',
         'description'   => 'Edit Quiz/Exam for given course',
         'type'          => 'write',
-        'classpath'     => 'local/qmapi/externallib.php',
+        'classpath'     => 'local/qmapi/quizes/externallib.php',
         'capabilities'  => 'mod/quiz:addinstance', 'moodle/course:create', 'moodle/course:visibility', 'mod/quiz:view',  'mod/quiz:attempt', 'mod/quiz:manage', 'mod/quiz:viewreports'
     ),
     'qmapi_quiz_delete_quiz_section' => array(
@@ -44,20 +44,9 @@ $functions = array(
         'methodname'    => 'delete_quiz_section',
         'description'   => 'Delete Quiz/Exam for a given course',
         'type'          => 'write',
-        'classpath'     => 'local/qmapi/externallib.php',
+        'classpath'     => 'local/qmapi/quizes/externallib.php',
         'capabilities'  => 'mod/quiz:addinstance', 'moodle/course:create', 'moodle/course:visibility', 'mod/quiz:view', 'mod/quiz:addinstance', 'mod/quiz:attempt', 'mod/quiz:manage', 'mod/quiz:viewreports'
     ),
-
-    'qmapi_question_create_question' => array(
-        'classname'     => 'mapi_question_external',
-        'methodname'    => 'create_question',
-        'description'   => 'create question for given quiz',
-        'type'          => 'write',
-        'classpath'     => 'local/qmapi/questions/externallib.php',
-        'capabilities'  => 'moodle/question:add', 'moodle/question:editall', 'moodle/question:viewall', 'moodle/course:visibility', 'mod/quiz:view', 'mod/quiz:manage', 'mod/quiz:viewreports'
-    ),
-
-
     'qmapi_category_question_create' => array(
         'classname'     => 'mapi_question_category_external',
         'methodname'    => 'create_question_category',
@@ -84,6 +73,52 @@ $functions = array(
         'classpath'     => 'local/qmapi/questions/categories/externallib.php',
         'capabilities'  => 'moodle/question:managecategory'
     ),
+
+    'qmapi_category_question_read' => array(
+        'classname'     => 'mapi_question_category_external',
+        'methodname'    => 'get_question_category',
+        'description'   => 'show question category in question bank',
+        'type'          => 'write',
+        'classpath'     => 'local/qmapi/questions/categories/externallib.php',
+        'capabilities'  => 'moodle/question:managecategory'
+    ),
+
+
+    'qmapi_question_create_question' => array(
+        'classname'     => 'mapi_question_external',
+        'methodname'    => 'create_question',
+        'description'   => 'create question for given quiz',
+        'type'          => 'write',
+        'classpath'     => 'local/qmapi/questions/externallib.php',
+        'capabilities'  => 'moodle/question:add', 'moodle/question:editall', 'moodle/question:viewall', 'moodle/course:visibility', 'mod/quiz:view', 'mod/quiz:manage', 'mod/quiz:viewreports'
+    ),
+
+
+    'qmapi_question_get_question' => array(
+        'classname'     => 'mapi_question_external',
+        'methodname'    => 'get_question',
+        'description'   => 'get question in question bank',
+        'type'          =>  'write',
+        'classpath'     => 'local/qmapi/questions/externallib.php',
+        'capabilities'  => 'moodle/question:viewall', 'moodle/question:editall'
+    ),
+
+    'qmapi_question_delete_question' => array(
+        'classname'     => 'mapi_question_external',
+        'methodname'    => 'delete_question',
+        'description'   => 'delete question from question bank',
+        'type'          =>  'write',
+        'classpath'     => 'local/qmapi/questions/externallib.php',
+        'capabilities'  => 'moodle/question:config', 'moodle/question:viewall', 'moodle/question:editall'
+    ),
+    'qmapi_question_edit_question' => array(
+        'classname'     => 'mapi_question_external',
+        'methodname'    => 'edit_question',
+        'description'   => 'edit question for given id',
+        'tupe'          => 'write',
+        'classpath'     => 'local/qmapi/questions/externallib.php',
+        'capabilities'  => 'moodle/qusestion:config', 'moodle/question:viewall', 'moodle/question:editall'
+    )
 
 );
 

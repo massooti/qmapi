@@ -179,9 +179,10 @@ foreach ($files as $file) {
     $stored_file = $fs->create_file_from_pathname($file_record, $file->filepath);
 
     if ($stored_file->errorcode == 'storedfilenotcreated') {
-        var_dump('errrrrrrrrrror');
+
         header("HTTP/1.1 406 file not accepted");
         header('Content-Type: application/json');
+
         $results =  [
             'message' => 'file can not created',
             'statusCode' => 406,

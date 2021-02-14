@@ -21,6 +21,11 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 require_once($CFG->libdir . "/externallib.php");
+require_once($CFG->dirroot . "/mod/quiz/lib.php");
+require_once($CFG->libdir . '/completionlib.php');
+require_once($CFG->dirroot . '/mod/quiz/locallib.php');
+require_once($CFG->dirroot . '/course/lib.php');
+require_once(__DIR__ . '/lib.php');
 
 class mapi_quiz_external extends external_api
 {
@@ -70,81 +75,54 @@ class mapi_quiz_external extends external_api
      */
     public static function create_quiz_section($quiz)
     {
-        global $CFG, $DB;
-        require_once($CFG->dirroot . "/mod/quiz/lib.php");
-        require_once($CFG->libdir . '/completionlib.php');
-        require_once($CFG->dirroot . '/mod/quiz/locallib.php');
-        require_once($CFG->dirroot . '/course/lib.php');
+        global $DB;
 
         $params = self::validate_parameters(self::create_quiz_section_parameters(), array('quiz' => $quiz));
         $transaction = $DB->start_delegated_transaction(); //If an exception is thrown in the below code, all DB queries in this code will be rollback.
 
-        foreach ($params['quiz'] as $exam) {
-            $exam = (object)$exam;
+        if ($DB->record_exists('quiz', array('course' => $quiz[0]['courseid'])) == false) {
 
-            if (trim($exam->courseid) == '') {
-                throw new invalid_parameter_exception('Invalid course id');
-            }
-            if ($DB->get_record('quiz', array('course' => $exam->courseid, 'name' => $exam->generalname))) {
-                throw new invalid_parameter_exception('exam with the same name already exists in the course');
-            }
+            throw new invalid_parameter_exception('course with given id dosent exist');
+        } elseif ($DB->get_record('quiz', array('course' => $quiz[0]['courseid'], 'name' => $quiz[0]['generalname']))) {
+
+            throw new invalid_parameter_exception('exam with the same name already exists in the course');
         }
 
+        //TODO This is just for create simple case of quiz setting,
+        // thus in future it will should be developed and implemented
 
-        $quiz = new StdClass();
-        $quiz->id = 0;
-        $quiz->course = $exam->courseid;
-        $quiz->name = $exam->generalname;
-        $quiz->intro = $exam->description;
-        $quiz->introformat = 1;
-        $quiz->preferredbehaviour = 'deferredfeedback';
-        $quiz->overduehandling = 'autosubmit';
-        $quiz->reviewattempt = 65792;
-        $quiz->reviewcorrectness = 4352;
-        $quiz->reviewmarks = 4352;
-        $quiz->questionperpage = 1;
-        $quiz->shuffleanswers = 1;
-        $quiz->grade = 10.00000;
+        $quizData = new StdClass();
+        $quizData->course = $quiz[0]['courseid'];
+        $quizData->name = $quiz[0]['generalname'];
+        $quizData->intro = $quiz[0]['description'];
+        $quizData->introformat = 1;
+        $quizData->preferredbehaviour = 'deferredfeedback';
+        $quizData->overduehandling = 'autosubmit';
+        $quizData->reviewattempt = 65792;
+        $quizData->reviewcorrectness = 4352;
+        $quizData->reviewmarks = 4352;
+        $quizData->questionperpage = 1;
+        $quizData->shuffleanswers = 1;
+        $quizData->grade = 10.00000;
         //        $quiz->timecreated = date
         //        $quiz->password = 123;
-        function addmoduletocourse($courseid, $instanceid, $modname, $sectionnum = 1)
-        {
-            global $DB;
-            course_create_sections_if_missing($courseid, $sectionnum);
-
-            $moduleid = $DB->get_field('modules', 'id', array('name' => $modname), MUST_EXIST);
-            $sectionid = $DB->get_field('course_sections', 'id', array('course' => $courseid, 'section' => $sectionnum), MUST_EXIST);
-
-            // Add the module to the course.
-            $newcm = new stdClass();
-            $newcm->course = $courseid;
-            $newcm->module = $moduleid;
-            $newcm->section = $sectionid;
-            $newcm->added = time();
-            $newcm->instance = $instanceid;
-            $newcm->visible = 1;
-            $newcm->groupmode = 0;
-            $newcm->groupingid = 0;
-            $newcm->groupmembersonly = 0;
-            $newcm->showdescription = 0;
-            $cmid = add_course_module($newcm);
-            // And add it to the section.
-            course_add_cm_to_section($courseid, $cmid, $sectionnum);
-        }
-
         // for quiz record create
-        $quizObj = $DB->insert_record('quiz', $quiz);
-        // for add course_modules record
-        addmoduletocourse($exam->courseid, $quizObj, 'quiz');
+        $quizObj = $DB->insert_record('quiz', $quizData);
+
         $transaction->allow_commit();
+
+        // for add course_modules record for given quiz id
+        add_module_course($quiz[0]['courseid'], $quizObj, 'quiz');
+        //for add quiz section fo show first slot
+        add_quiz_section($quizObj);
 
         // returning response status
         if (isset($quizObj)) {
             $result = array();
             $result['quiz_id'] = $quizObj;
             $result['quiz_name'] = $DB->get_field('quiz', 'name', array('id' => $quizObj), MUST_EXIST);
-            $result['course_id'] = $DB->get_field('course', 'id', array('id' => $exam->courseid), MUST_EXIST);
-            $result['course_name'] = $DB->get_field('course', 'fullname', array('id' => $exam->courseid), MUST_EXIST);
+            $result['course_id'] = $DB->get_field('course', 'id', array('id' => $quiz[0]['courseid']), MUST_EXIST);
+            $result['course_name'] = $DB->get_field('course', 'fullname', array('id' => $quiz[0]['courseid']), MUST_EXIST);
             $result['status'] = 201;
             $result['message'] = "Quiz created succesfully";
         } else {
@@ -184,8 +162,7 @@ class mapi_quiz_external extends external_api
     public static function edit_quiz_section_parameters()
     {
         $quizconfig = get_config('quiz');
-        // print_r($quizconfig);
-        // die();
+
         return new external_function_parameters(
             array(
                 'quiz' => new external_multiple_structure(
