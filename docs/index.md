@@ -2,7 +2,7 @@
 You can use the [editor on GitHub](https://github.com/massooti/qmapi/edit/gh-pages/docs/index.md) to maintain and preview the content for your website in Markdown files.
 Whenever you commit to this repository, GitHub Pages will run [Jekyll](https://jekyllrb.com/) to rebuild the pages in your site, from the content in your Markdown files.
 
-### Getting Started
+## Getting Started
 Create and add rich question, quiz, question categories content using REST api inside your moodle LMS for free. Some examples of what you get with QMAPI are Interactive Quizzes, questions types and question categories.
 ### Why should use qmapi
 Good question! I started unexpectedly developing for Moodle. Moodle, as you may have noticed, is very academic in all its aspects even code. So you may not find the specific answer to your question quickly. And that's why this project is worth sharing. This template is a result of reading all the documentation provided in Moodle Developer DOCs. Development of few production-ready plugins for large Moodle powered platforms. And finally, this is what I am using all the time to kick start any new plugin.
@@ -50,7 +50,7 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ### Usage 
-### Initial Setup
+## Initial Setup
 To install it using git, type this command in the /local directory of your Moodle install:
 ```
 git clone https://github.com/massooti/qmapi
@@ -68,7 +68,13 @@ eeeeeeeeeeeeebcvbcvbcvbcvvvvvvvvvvvv
 | `qmapi_category_question_read`   | **show question category in question bank**|
 | `qmapi_category_question_delete` | **delete question category in question bank**|
 | `qmapi_category_question_edit`   | **edit question category in question bank**|
-## dddddddddddd
+| `qmapi_quiz_delete_quiz_section` | **delete Quiz/Exam for a given course**|
+| `qmapi_quiz_edit_quiz_section`   | **edit Quiz/Exam for given course**|
+| `qmapi_quiz_create_quiz_section` | **create Quiz/Exam for a given course**|
+
+
+
+## methods descriptions
 asdasdasd
 
 ```markdown
