@@ -61,6 +61,9 @@ eeeeeeeeeeeeebcvbcvbcvbcvvvvvvvvvvvv
 #### List of All functions 
 | function | Description |
 
+| `qmapi_quiz_delete_quiz_section` | **delete Quiz/Exam for a given course**|
+| `qmapi_quiz_edit_quiz_section`   | **edit Quiz/Exam for given course**|
+| `qmapi_quiz_create_quiz_section` | **create Quiz/Exam for a given course**|
 | `qmapi_question_create_question` | **create question**|
 | `qmapi_question_edit_questoion`  | **edit question for given id**|
 | `qmapi_question_delete_question` | **delete question for given id**|
@@ -68,14 +71,12 @@ eeeeeeeeeeeeebcvbcvbcvbcvvvvvvvvvvvv
 | `qmapi_category_question_read`   | **show question category in question bank**|
 | `qmapi_category_question_delete` | **delete question category in question bank**|
 | `qmapi_category_question_edit`   | **edit question category in question bank**|
-| `qmapi_quiz_delete_quiz_section` | **delete Quiz/Exam for a given course**|
-| `qmapi_quiz_edit_quiz_section`   | **edit Quiz/Exam for given course**|
-| `qmapi_quiz_create_quiz_section` | **create Quiz/Exam for a given course**|
+
 
 
 
 ## methods descriptions
-asdasdasd
+
 
 ```markdown
 Syntax highlighted code block
@@ -100,10 +101,6 @@ Syntax highlighted code block
 ```
 
 For more details see [GitHub Flavored Markdown](https://guides.github.com/features/mastering-markdown/).
-
-### Jekyll Themes
-
-Your Pages site will use the layout and styles from the Jekyll theme you have selected in your [repository settings](https://github.com/massooti/qmapi/settings). The name of this theme is saved in the Jekyll `_config.yml` configuration file.
 
 ### Support or Contact
 
