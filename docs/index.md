@@ -4,7 +4,7 @@ Whenever you commit to this repository, GitHub Pages will run [Jekyll](https://j
 
 ### Getting Started
 Create and add rich question, quiz, question categories content using REST api inside your moodle LMS for free. Some examples of what you get with QMAPI are Interactive Quizzes, questions types and question categories.
-# Why should use qmapi
+### Why should use qmapi
 Good question! I started unexpectedly developing for Moodle. Moodle, as you may have noticed, is very academic in all its aspects even code. So you may not find the specific answer to your question quickly. And that's why this project is worth sharing. This template is a result of reading all the documentation provided in Moodle Developer DOCs. Development of few production-ready plugins for large Moodle powered platforms. And finally, this is what I am using all the time to kick start any new plugin.
 
 ### Contributing
@@ -58,11 +58,16 @@ git clone https://github.com/massooti/qmapi
 ### Assign plugins to the web service token external api
 eeeeeeeeeeeeebcvbcvbcvbcvvvvvvvvvvvv
 
-## List of All function 
+#### List of All functions 
 | function | Description |
 | --- | --- |
-| `qmapi_question_create_question` | create *new or modified* question |
-| `qmapi_question_edit_questoion` | Show file differences that **haven't been** staged |
+| `qmapi_question_create_question` | **create question**|
+| `qmapi_question_edit_questoion`  | **edit question for given id**|
+| `qmapi_question_delete_question` | **delete question for given id**|
+| `qmapi_question_get_question`    | **get question for given id**|
+| `qmapi_category_question_read`   | **show question category in question bank**|
+| `qmapi_category_question_delete` | **delete question category in question bank**|
+| `qmapi_category_question_edit`   | **edit question category in question bank**|
 
 ```markdown
 Syntax highlighted code block
