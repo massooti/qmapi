@@ -1,11 +1,7 @@
-[![Telegram Bot API PHP SDK](https://user-images.githubusercontent.com/1915268/75023827-7879f780-54be-11ea-98c1-436a14e7e633.png)][link-repo]
+[![qmapi Moodle plugin](https://github.com/massooti/qmapi)<img src="https://tracker.moodle.org/secure/attachment/68503/Moodle_Circle_M_RGB.png" width="250">]
 
 <p align="center">
 <a href="https://phpchat.co"><img src="https://img.shields.io/badge/Slack-PHP%20Chat-5c6aaa.svg?logo=slack&labelColor=4A154B&style=for-the-badge" alt="Join PHP Chat"/></a>
-<a href="https://t.me/PHPChatCo"><img src="https://img.shields.io/badge/Chat-on%20Telegram-2CA5E0.svg?logo=telegram&style=for-the-badge" alt="Chat on Telegram"/></a>
-<a href="https://github.com/irazasyed/telegram-bot-sdk/actions"><img src="https://img.shields.io/github/workflow/status/irazasyed/telegram-bot-sdk/CI.svg?style=for-the-badge" alt="Build Status"/></a>
-<a href="https://github.com/irazasyed/telegram-bot-sdk/releases"><img src="https://img.shields.io/github/release/irazasyed/telegram-bot-sdk.svg?style=for-the-badge" alt="Latest Version"/></a>
-<a href="https://packagist.org/packages/irazasyed/telegram-bot-sdk"><img src="https://img.shields.io/packagist/dt/irazasyed/telegram-bot-sdk.svg?style=for-the-badge" alt="Total Downloads"/></a>
 </p>
 
 qmapi Moodle plugin 
@@ -22,12 +18,6 @@ qmapi Moodle plugin
 ## Documentation
 
 Documentation for the SDK can be found on the [website][link-docs].
-
-## Are You Using Telegram Bot SDK?
-
-If you're using this SDK to build your Telegram Bots or have a project that's relevant to this SDK, We'd love to know and share it with the world.
-
-Head over to [Awesome Telegram Bots][link-awesome-telegram-bots] to share, discover, and learn more.
 
 ## Additional information
 
