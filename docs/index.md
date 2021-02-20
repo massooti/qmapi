@@ -3,14 +3,15 @@ You can use the [editor on GitHub](https://github.com/massooti/qmapi/edit/gh-pag
 Whenever you commit to this repository, GitHub Pages will run [Jekyll](https://jekyllrb.com/) to rebuild the pages in your site, from the content in your Markdown files.
 
 ### Getting Started
-sdfsdffsdf
+Create and add rich question, quiz, question categories content using REST api inside your moodle LMS for free. Some examples of what you get with QMAPI are Interactive Quizzes, questions types and question categories.
 
 ### Contributing
 Feel free to contribute by:
 
-    Submitting translations to the Moodle AMOS translator
+    
     Testing and creating issues. But remember to check if the issues is already reported before creating a new one. Perhaps you can contribute to an already existing issue?
     Solving issues and submitting code through Pull Requests to the 'master' branch or on a separate feature branch.
+    
 ### Changelog
 All notable changes to this project will be documented in this file.
 This project adheres to Semantic Versioning.
