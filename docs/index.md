@@ -56,9 +56,9 @@ To install it using git, type this command in the /local directory of your Moodl
 git clone https://github.com/massooti/qmapi
 ```
 ### Assign plugins to the web service token external api
-eeeeeeeeeeeee
+eeeeeeeeeeeeebcvbcvbcvbcvvvvvvvvvvvv
 
-
+## List of All function 
 | function | Description |
 | --- | --- |
 | `qmapi_question_create_question` | create *new or modified* question |
