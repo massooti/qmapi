@@ -60,7 +60,6 @@ eeeeeeeeeeeeebcvbcvbcvbcvvvvvvvvvvvv
 
 #### List of All functions 
 | function | Description |
-| --- | --- |
 
 | `qmapi_question_create_question` | **create question**|
 | `qmapi_question_edit_questoion`  | **edit question for given id**|
