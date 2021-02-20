@@ -23,6 +23,7 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+use core\plugininfo\qtype;
 
 defined('MOODLE_INTERNAL') || die();
 
@@ -46,7 +47,7 @@ require_once($CFG->libdir . '/formslib.php');
  * @copyright  1999 onwards Martin Dougiamas {@link http://moodle.com}
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class TrueFalseQuestion
+class TrueFalseQuestion extends qtype
 {
     protected $fileoptions = array(
         'subdirs' => true,
@@ -367,32 +368,30 @@ class TrueFalseQuestion
      */
     public function save_question_true_false($question, $clientForm): array
     {
-
         global $USER, $DB;
         $form = new stdClass();
 
         // The actual update/insert done with multiple DB access, so we do it in a transaction.
         $transaction = $DB->start_delegated_transaction();
         $context = $this->get_context_by_category_id($question->category);
+        $course = $clientForm[0]['course'];
         // This default implementation is suitable for most
-        // question types.
-
         // First, save the basic question itself.
         $question->name = $clientForm[0]['name'];
-        $question->parent = isset($clientForm[0]['parent']) ? $clientForm[0]['name'] : 0;
+        $question->parent = isset($clientForm[0]['parent']) ? $clientForm[0]['parent'] : 0;
         $question->length = $this->actual_number_of_questions($question);
         $question->penalty = 1;
 
         // The trim call below has the effect of casting any strange values received,
         // like null or false, to an appropriate string, so we only need to test for
         // missing values. Be careful not to break the value '0' here.
-        if (!isset($clientForm[0]['text'])) {
+        if (!isset($clientForm[0]['questiontext'])) {
             $question->questiontext = '';
         } else {
-            $question->questiontext = trim($clientForm[0]['text']);
+            $question->questiontext = trim($clientForm[0]['questiontext']);
         }
-        $question->questiontextformat = !empty($clientForm[0]['format']) ?
-            $clientForm[0]['format'] : 0;
+        $question->questiontextformat = !empty($clientForm[0]['questiontextformat']) ?
+            $clientForm[0]['questiontextformat'] : 0;
         if (empty($clientForm[0]['generalfeedback'])) {
             $question->generalfeedback = '';
         } else {
@@ -415,26 +414,26 @@ class TrueFalseQuestion
             $question->defaultmark = $clientForm[0]['defaultmark'];
         }
 
-        // if (isset($form->idnumber)) {
-        //     if ((string) $form->idnumber === '') {
-        //         $question->idnumber = null;
-        //     } else {
-        //         // While this check already exists in the form validation,
-        //         // this is a backstop preventing unnecessary errors.
-        //         // Only set the idnumber if it has changed and will not cause a unique index violation.
-        //         if (strpos($form->category, ',') !== false) {
-        //             list($category, $categorycontextid) = explode(',', $form->category);
-        //         } else {
-        //             $category = $form->category;
-        //         }
-        //         if (!$DB->record_exists(
-        //             'question',
-        //             ['idnumber' => $form->idnumber, 'category' => $category]
-        //         )) {
-        //             $question->idnumber = $form->idnumber;
-        //         }
-        //     }
-        // }
+        if (isset($clientForm[0]['idnumber'])) {
+            if ((string) $clientForm[0]['idnumber'] === '') {
+                $question->idnumber = null;
+            } else {
+                // While this check already exists in the form validation,
+                // this is a backstop preventing unnecessary errors.
+                // Only set the idnumber if it has changed and will not cause a unique index violation.
+                if (strpos($clientForm[0]['category'], ',') !== false) {
+                    list($category, $categorycontextid) = explode(',', $clientForm[0]['category']);
+                } else {
+                    $category = $clientForm[0]['category'];
+                }
+                if (!$DB->record_exists(
+                    'question',
+                    ['idnumber' => $clientForm[0]['idnumber'], 'category' => $category]
+                )) {
+                    $question->idnumber = $clientForm[0]['idnumber'];
+                }
+            }
+        }
 
         // If the question is new, create it.
         $newquestion = false;
@@ -455,8 +454,7 @@ class TrueFalseQuestion
 
         if (!empty($question->questiontext)) {
             $question->questiontext = file_save_draft_area_files(
-                // $form->questiontext['itemid'],
-                1,
+                $clientForm[0]['questiontextformat']['itemid'],
                 $context->id,
                 'question',
                 'questiontext',
@@ -467,8 +465,7 @@ class TrueFalseQuestion
         }
         if (!empty($question->generalfeedback)) {
             $question->generalfeedback = file_save_draft_area_files(
-                // $form->generalfeedback['itemid'],
-                1,
+                $clientForm[0]['generalfeedback']['itemid'],
                 $context->id,
                 'question',
                 'generalfeedback',
@@ -521,21 +518,20 @@ class TrueFalseQuestion
             $event = \core\event\question_updated::create_from_question_instance($question, $context);
             $event->trigger();
         }
-
         $transaction->allow_commit();
-        // var_dump($question->id);
-        // die();
         return [
             'question' => $question,
             'id' => $question->id,
+            'quiz_id' => $question->quizid,
+            'quiz_name' => $question->quizName,
+            'course_id' => $course->id,
+            'course_name' => $course->fullname,
             'question_name' => $question->name,
             'question_category' => $question->category,
             'defaultmark' => $question->defaultmark,
             'type' => $question->qtype,
-
         ];
     }
-
     /**
      * Saves question-type specific options
      *
@@ -548,7 +544,6 @@ class TrueFalseQuestion
     {
         global $DB;
         $extraquestionfields = $this->extra_question_fields();
-
         if (is_array($extraquestionfields)) {
             $question_extension_table = array_shift($extraquestionfields);
 
@@ -841,57 +836,59 @@ class TrueFalseQuestion
             $question->options = new stdClass();
         }
 
-        $extraquestionfields = $this->extra_question_fields();
-        if (is_array($extraquestionfields)) {
-            $question_extension_table = array_shift($extraquestionfields);
-            $extra_data = $DB->get_record(
-                $question_extension_table,
-                array($this->questionid_column_name() => $question->id),
-                implode(', ', $extraquestionfields)
-            );
-            if ($extra_data) {
-                foreach ($extraquestionfields as $field) {
-                    $question->options->$field = $extra_data->$field;
-                }
-            } else {
-                echo $OUTPUT->notification('Failed to load question options from the table ' .
-                    $question_extension_table . ' for questionid ' . $question->id);
-                return false;
-            }
-        }
+        // $extraquestionfields = $this->extra_question_fields();
+        // if (is_array($extraquestionfields)) {
+        //     $question_extension_table = array_shift($extraquestionfields);
+        //     $extra_data = $DB->get_record(
+        //         $question_extension_table,
+        //         array($this->questionid_column_name() => $question->id),
+        //         implode(', ', $extraquestionfields)
+        //     );
+        //     if ($extra_data) {
+        //         foreach ($extraquestionfields as $field) {
+        //             $question->options->$field = $extra_data->$field;
+        //         }
+        //     } else {
+        //         echo $OUTPUT->notification('Failed to load question options from the table ' .
+        //             $question_extension_table . ' for questionid ' . $question->id);
+        //         return false;
+        //     }
+        // }
 
-        $extraanswerfields = $this->extra_answer_fields();
-        if (is_array($extraanswerfields)) {
-            $answerextensiontable = array_shift($extraanswerfields);
-            // Use LEFT JOIN in case not every answer has extra data.
-            $question->options->answers = $DB->get_records_sql("
-                    SELECT qa.*, qax." . implode(', qax.', $extraanswerfields) . '
-                    FROM {question_answers} qa ' . "
-                    LEFT JOIN {{$answerextensiontable}} qax ON qa.id = qax.answerid
-                    WHERE qa.question = ?
-                    ORDER BY qa.id", array($question->id));
-            if (!$question->options->answers) {
-                echo $OUTPUT->notification('Failed to load question answers from the table ' .
-                    $answerextensiontable . 'for questionid ' . $question->id);
-                return false;
-            }
-        } else {
-            // Don't check for success or failure because some question types do
-            // not use the answers table.
-            $question->options->answers = $DB->get_records(
-                'question_answers',
-                array('question' => $question->id),
-                'id ASC'
-            );
-        }
+        // $extraanswerfields = $this->extra_answer_fields();
 
+        // if (is_array($extraanswerfields)) {
+        //     $answerextensiontable = array_shift($extraanswerfields);
+        //     // Use LEFT JOIN in case not every answer has extra data.
+        //     $question->options->answers = $DB->get_records_sql("
+        //             SELECT qa.*, qax." . implode(', qax.', $extraanswerfields) . '
+        //             FROM {question_answers} qa ' . "
+        //             LEFT JOIN {{$answerextensiontable}} qax ON qa.id = qax.answerid
+        //             WHERE qa.question = ?
+        //             ORDER BY qa.id", array($question->id));
+        //     if (!$question->options->answers) {
+        //         echo $OUTPUT->notification('Failed to load question answers from the table ' .
+        //             $answerextensiontable . 'for questionid ' . $question->id);
+        //         return false;
+        //     }
+        // } else {
+        // Don't check for success or failure because some question types do
+        // not use the answers table.
+        $question->answers = $DB->get_records(
+            'question_answers',
+            array('question' => $question->id),
+            'id ASC'
+        );
+        // }
         $question->hints = $DB->get_records(
             'question_hints',
             array('questionid' => $question->id),
             'id ASC'
         );
-
-        return true;
+        return [
+            'answers' => count($question->answers),
+            'hints'   => count($question->hints),
+        ];
     }
 
     /**
@@ -1028,10 +1025,6 @@ class TrueFalseQuestion
         $forceplaintextanswers = true
     ) {
         $question->answers = array();
-
-        var_dump($question->answers);
-        die();
-
         foreach ($questiondata->options->answers as $a) {
             $question->answers[$a->id] = $this->make_answer($a);
             if (!$forceplaintextanswers) {

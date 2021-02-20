@@ -24,6 +24,7 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+use ScssPhp\ScssPhp\Cache;
 use tool_dataprivacy\form\context_instance;
 
 defined('MOODLE_INTERNAL') || die();
@@ -36,6 +37,7 @@ require_once($CFG->dirroot . '/question/engine/bank.php');
 require_once($CFG->libdir  . '/questionlib.php');
 require_once($CFG->dirroot . '/lib/accesslib.php');
 require_once($CFG->dirroot . '/local/qmapi/questions/controller/add.php');
+require_once($CFG->dirroot . '/local/qmapi/questions/controller/edit.php');
 
 /**
  * Question external functions
@@ -64,9 +66,8 @@ class mapi_question_external extends external_api
                 'question' => new external_multiple_structure(
                     new external_single_structure(
                         array(
-                            'quizid' => new external_value(PARAM_INT, 'quiz id', VALUE_REQUIRED),
-                            // 'categoryid' => new external_value(PARAM_INT, 'quiz id', null, 0),
-                            'question_category' => new external_value(PARAM_INT, 'question category id', VALUE_OPTIONAL),
+                            'quizid' => new external_value(PARAM_INT, 'quiz id', VALUE_DEFAULT, 0),
+                            'question_category' => new external_value(PARAM_INT, 'question category id', VALUE_DEFAULT, 0),
                             'name' => new external_value(PARAM_TEXT, 'question name', VALUE_REQUIRED),
                             'text' => new external_value(PARAM_TEXT, 'question text', VALUE_REQUIRED),
                             'generalfeedback' => new external_value(PARAM_TEXT, 'general feedback', VALUE_DEFAULT, 'generalfeedback'),
@@ -82,11 +83,10 @@ class mapi_question_external extends external_api
                 'answer' => new external_multiple_structure(
                     new external_single_structure(
                         array(
-                            'answer' => new external_value(PARAM_TEXT, 'select true answer', VALUE_REQUIRED),
+                            'answer' => new external_value(PARAM_BOOL, 'select RiGHT answer', VALUE_OPTIONAL),
                             'answerformat' => new external_value(PARAM_INT, 'course format option value', VALUE_OPTIONAL, 0),
-                            'fraction' => new external_value(PARAM_FLOAT, 'question fraction for TRUE answer', VALUE_DEFAULT, 1.0),
-                            'tfeedback' => new external_value(PARAM_RAW, 'feedback for TRUE answer', VALUE_OPTIONAL),
-                            'ffeedback' => new external_value(PARAM_RAW, 'feedback for FALSE answer', VALUE_OPTIONAL),
+                            'rfeedback' => new external_value(PARAM_RAW, 'feedback for RIGHT answer', VALUE_OPTIONAL),
+                            'wfeedback' => new external_value(PARAM_RAW, 'feedback for WRONG answer', VALUE_OPTIONAL),
                         ),
                     ),
                     'additional options/answers for question',
@@ -111,30 +111,21 @@ class mapi_question_external extends external_api
      */
     public static function create_question($question, $answer)
     {
-        global $CFG, $DB;
-
-        $course_id = $DB->get_field('quiz', 'course', array('id' => $question[0]['quizid']));
-
+        global $DB;
         $params = self::validate_parameters(self::create_question_parameters(), array('question' => $question, 'answer' => $answer));
-        $quiz = $DB->get_record('quiz', array('id' => $question[0]['quizid']));
+        if ($DB->record_exists('quiz', array('id' => $question[0]['quizid'])) == false && $question[0]['quizid'] != 0) {
+            print_error('quiz does not exist', 'quiz', null, null, 'choose correct quiz id');
+        } elseif ($DB->record_exists('question_categories', array('id' => $question[0]['question_category'])) == false && $question[0]['question_category']) {
+            print_error('categorydoesnotexist', 'question', null, null, 'choose correct category id');
+        }
+
         $questionBuilder = new QuestionBuilder();
-        $__question = $questionBuilder->questionMaker($question, $course_id);
+        $__question = $questionBuilder->questionMaker($question);
         $answerBuilder = new AnswerBuilder($__question);
 
-        $__answer =  $answerBuilder->answerMaker($answer);
+        $answerBuilder->answerMaker($answer);
 
-        $result = array();
-        $result['course_id']    = $course_id;
-        $result['quiz_id']      = $question[0]['quizid'];
-        $result['quiz_name']    = $quiz->name;
-        $result['question_name']     = $__question['question_name'];
-        $result['question_id']  = $__question['id'];
-        $result['qtype']        = $__question['type'];
-        $result['defaultmark']  = $__question['defaultmark'];
-        $result['right_answer_id'] = $__answer->trueanswer;
-        $result['false_answer_id'] = $__answer->falseanswer;
-
-        return $result;
+        return $__question;
     }
 
     /**
@@ -145,19 +136,17 @@ class mapi_question_external extends external_api
     public
     static function create_question_returns()
     {
-
         return new external_single_structure(
             array(
-                'course_id' => new external_value(PARAM_INT, 'course id'),
+                'id' => new external_value(PARAM_INT, 'question id'),
                 'quiz_id' => new external_value(PARAM_INT, 'quiz id'),
+                'course_id' => new external_value(PARAM_INT, 'course id'),
+                'course_name' => new external_value(PARAM_TEXT, 'course name'),
                 'quiz_name' => new external_value(PARAM_TEXT, 'quiz name'),
-                'question_id' => new external_value(PARAM_INT, 'question id'),
                 'question_name' => new external_value(PARAM_TEXT, 'question name'),
-                'qtype' => new external_value(PARAM_TEXT, 'question type'),
+                'question_category' => new external_value(PARAM_TEXT, 'question category name'),
+                'type' => new external_value(PARAM_TEXT, 'question type'),
                 'defaultmark' => new external_value(PARAM_INT, 'defaultmark'),
-                'right_answer_id' => new external_value(PARAM_INT, 'right answer id'),
-                'false_answer_id' => new external_value(PARAM_INT, 'false answer id'),
-                // 'message' => new external_value(PARAM_TEXT, 'question created successfully'),
             )
         );
     }
@@ -180,31 +169,32 @@ class mapi_question_external extends external_api
 
     public static function get_question($question)
     {
-        global $CFG, $DB;
-
+        global $DB;
 
         $params = self::validate_parameters(self::get_question_parameters(), array('question' => $question));
-        $transaction = $DB->start_delegated_transaction(); //If an exception is thrown in the below code, all DB queries in this code will be rollback.
         if ($DB->record_exists('question', array('id' => $question[0]['id'])) == false) {
-            throw new invalid_parameter_exception('question with given id dosent exist');
+            print_error('question with given id dosen`t exists', 'error', null, null, 'choose correct question id');
         }
+
         $questionObj = $DB->get_record('question', array('id' => $question[0]['id']));
+        $questionId = new TrueFalseQuestion();
+        $questionOptions = $questionId->get_question_options($questionObj);
 
-        $fields = $DB->get_columns('question');
-        $transaction->allow_commit();
-        $result = [];
-        $result['id'] = $question[0]['id'];
-        $result['category'] = $questionObj->category;
-        $result['question_name'] = $questionObj->name;
-        $result['question_text'] = $questionObj->questiontext;
-        $result['general_feed_back'] = $questionObj->generalfeedbackformat;
-        $result['default_mark'] = $questionObj->defaultmark;
-        $result['question_type'] = $questionObj->qtype;
-        $result['created_by'] = $questionObj->createdby;
-        $result['question_in_usage'] = questions_in_use(array('id' => $question[0]['id']));
-
-        return $result;
+        return [
+            'id' => $question[0]['id'],
+            'category' => $questionObj->category,
+            'question_name' => $questionObj->name,
+            'question_text' => $questionObj->questiontext,
+            'general_feed_back' => $questionObj->generalfeedbackformat,
+            'default_mark' => $questionObj->defaultmark,
+            'question_type' => $questionObj->qtype,
+            'created_by' => $questionObj->createdby,
+            'question_in_usage' => questions_in_use(array('id' => $question[0]['id'])),
+            'answers' => $questionOptions['answers'],
+            'hints' => $questionOptions['hints'],
+        ];
     }
+
 
     public static function get_question_returns()
     {
@@ -219,7 +209,8 @@ class mapi_question_external extends external_api
                 'default_mark'      => new external_value(PARAM_FLOAT, 'default mark'),
                 'created_by'    => new external_value(PARAM_INT, 'user created this question'),
                 'question_in_usage'    => new external_value(PARAM_BOOL, 'question in usage'),
-                // 'message' => new external_value(PARAM_TEXT, 'question created successfully'),
+                'answers' => new external_value(PARAM_INT, 'show question answers in question_answers table'),
+                'hints' => new external_value(PARAM_INT, 'show questions hints number')
             )
         );
     }
@@ -227,7 +218,6 @@ class mapi_question_external extends external_api
 
     public static function delete_question_parameters()
     {
-
         return new external_function_parameters(
             array(
                 'question' => new external_multiple_structure(
@@ -244,21 +234,25 @@ class mapi_question_external extends external_api
 
     public static function delete_question($question)
     {
-
-        global $CFG, $DB;
-
+        global $DB;
         $params = self::validate_parameters(self::get_question_parameters(), array('question' => $question));
+
         $transaction = $DB->start_delegated_transaction(); //If an exception is thrown in the below code, all DB queries in this code will be rollback.
-        if ($DB->record_exists('question', array('id' => $question[0]['id'])) == false) {
+        $questionObject = $DB->get_record('question', array('id' => $question[0]['id']));
+
+        if (empty($questionObject)) {
             throw new invalid_parameter_exception('question with given id dosent exist');
         }
 
-        if (questions_in_use($question) == false) {
+        if (questions_in_use($question) == true) {
 
             return ['message' => "question can not be delete becuse it's in use"];
         }
+        $categoryContextId = $DB->get_field('question_categories', 'contextid', array('id' => $questionObject->category));
 
-        question_delete_question($question[0]['id']);
+        $questionRemove = new TrueFalseQuestion();
+
+        $questionRemove->delete_question($questionObject->id, $categoryContextId);
 
         $transaction->allow_commit();
 
@@ -283,64 +277,97 @@ class mapi_question_external extends external_api
 
         return new external_function_parameters(
             array(
+                'id' => new external_value(PARAM_INT, 'quiz id', VALUE_REQUIRED),
                 'question' => new external_multiple_structure(
                     new external_single_structure(
                         array(
-                            'id' => new external_value(PARAM_INT, 'questiion id', VALUE_REQUIRED),
-                            'qtype' => new external_value(PARAM_TEXT, 'question type', VALUE_OPTIONAL),
+                            'quizid' => new external_value(PARAM_INT, 'quiz id', VALUE_OPTIONAL),
+                            'category' => new external_value(PARAM_INT, 'question category id', VALUE_OPTIONAL),
                             'name' => new external_value(PARAM_TEXT, 'question name', VALUE_OPTIONAL),
-                            'text' => new external_value(PARAM_RAW, 'question text', VALUE_OPTIONAL),
-
-                        )
+                            'questiontext' => new external_value(PARAM_TEXT, 'question text', VALUE_OPTIONAL),
+                            'generalfeedback' => new external_value(PARAM_TEXT, 'general feedback', VALUE_DEFAULT, 'generalfeedback'),
+                            'questiontextformat' => new external_value(PARAM_INT, 'text format', VALUE_DEFAULT, 1),
+                            'defaultmark' => new external_value(PARAM_FLOAT, 'default mark', VALUE_OPTIONAL),
+                            'penalty' => new external_value(PARAM_FLOAT, 'penalty', VALUE_OPTIONAL, 1),
+                        ),
+                        '',
+                        VALUE_OPTIONAL
                     ),
-                    'edit question from question bank'
-                )
-            )
+                    'edit question data',
+                    VALUE_OPTIONAL
+                ),
+                'answer' => new external_multiple_structure(
+                    new external_single_structure(
+                        array(
+                            'answer' => new external_value(PARAM_BOOL, 'select RiGHT answer', VALUE_OPTIONAL),
+                            'answerformat' => new external_value(PARAM_INT, 'course format option value', VALUE_OPTIONAL, 0),
+                            // 'fraction' => new external_value(PARAM_FLOAT, 'question fraction for TRUE answer', VALUE_OPTIONAL, 1.0),
+                            'rfeedback' => new external_value(PARAM_RAW, 'feedback for RIGHT answer', VALUE_OPTIONAL),
+                            'wfeedback' => new external_value(PARAM_RAW, 'feedback for WRONG answer', VALUE_OPTIONAL),
+                        ),
+                    ),
+                    'additional options/answers for question',
+                    VALUE_OPTIONAL
+                ),
+            ),
+
         );
     }
 
 
-    public static function edit_question($question)
+    public static function edit_question($id, $question, $answer)
     {
-        global $CFG, $DB;
+        global $DB;
+        $params = self::validate_parameters(self::edit_question_parameters(), array(
+            'id' => $id, 'question' => $question, 'answer' => $answer
+        ));
+        $questionObject = $DB->get_record('question', array('id' => $id));
+        $questionArray = (array)$questionObject;
 
-        $params = self::validate_parameters(self::edit_question_parameters(), array('question' => $question));
-        $transaction = $DB->start_delegated_transaction(); //If an exception is thrown in the below code, all DB queries in this code will be rollback.
-        if ($DB->record_exists('question', array('id' => $question[0]['id'])) == false) {
-            throw new invalid_parameter_exception('question with given id dosent exist');
+        if (empty($questionObject)) {
+            print_error('question with given id dosent exist', 'question', null, null, 'choose correct category id');
+        } elseif ($DB->record_exists('question_categories', array('id' => $question[0]['category'])) == false && $question[0]['category'] > 0) {
+            print_error('category with given id dosen`t exists in question bank', 'category', null, null, 'choose correct category id');
         }
-        question_bank::load_question_definition_classes('truefalse');
-        $tf = new qtype_truefalse_question();
-        test_question_maker::initialise_a_question($tf);
-        $tf->name = 'True/false question';
-        $tf->questiontext = 'The answer is true.';
-        $tf->generalfeedback = 'You should have selected true.';
-        $tf->penalty = 1;
-        $tf->qtype = question_bank::get_qtype('truefalse');
+        $questionParams = array();
+        $coloums = $DB->get_columns('question');
 
-        $tf->rightanswer = true;
-        $tf->truefeedback = 'This is the right answer.';
-        $tf->falsefeedback = 'This is the wrong answer.';
-        $tf->truefeedbackformat = FORMAT_HTML;
-        $tf->falsefeedbackformat = FORMAT_HTML;
-        $tf->trueanswerid = 13;
-        $tf->falseanswerid = 14;
+        //we check dynamicaly if the input data has paramter, pass it to controller , 
+        //otherwise set question data wich is set befor as a paramter
+        foreach ($coloums as $col) {
+            if (isset($question[0][$col->name])) {
+                $questionParams[$col->name] = $question[0][$col->name];
+            } else {
+                $questionParams[$col->name] = $questionArray[$col->name];
+            }
+        }
+        $questionParams['id'] = $id;
+        $questionParams['type'] = $questionObject->qtype;
+        $modifyQuestion = new QuestionEditor();
+        $questionEdited = $modifyQuestion->questionsEditor($questionParams);
+        $modifyAnswer   = new AnswerEditor($questionEdited);
+        $modifyAnswer->answerEditor($answer);
 
-        return $tf;
+        return [
+            'id' => $questionEdited['id'],
+            'question_name' => $questionEdited['question_name'],
+            'question_category' => $questionEdited['question_category'],
+            'type' => $questionEdited['type'],
+            'message' => 'question edited successfully'
+        ];
     }
 
 
     public static function edit_question_returns()
     {
         return new external_function_parameters(
+
             array(
-                'question' => new external_multiple_structure(
-                    new external_single_structure(
-                        array(
-                            'id' => new external_value(PARAM_INT, 'question id')
-                        )
-                    )
-                )
+                'id' => new external_value(PARAM_INT, 'question id'),
+                'question_name' => new external_value(PARAM_TEXT, 'question name'),
+                'question_category' => new external_value(PARAM_TEXT, 'question category name'),
+                'type' => new external_value(PARAM_TEXT, 'question type'),
+                'message' => new external_value(PARAM_TEXT, 'question created successfully'),
             )
         );
     }

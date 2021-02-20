@@ -27,6 +27,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 require_once($CFG->libdir . '/questionlib.php');
+require_once($CFG->libdir . '/filelib.php');
 require_once($CFG->libdir . '/dml/moodle_database.php');
 
 
@@ -53,37 +54,31 @@ class TrueFalseAnswer extends question_type
      *
      * @return string the text for this field, after files have been processed.
      */
-    protected function import_or_save_files($field, $context, $component, $filearea, $itemid)
+    protected function import_or_save_files($field, $contextid, $component, $filearea, $itemid)
     {
         if (!empty($field['itemid'])) {
             // This is the normal case. We are safing the questions editing form.
             return file_save_draft_area_files(
                 $field['itemid'],
-                $context->id,
+                $contextid,
                 $component,
                 $filearea,
                 $itemid,
                 $this->fileoptions,
-                trim($field['text'])
+                trim($field)
             );
         } else if (!empty($field['files'])) {
             // This is the case when we are doing an import.
             foreach ($field['files'] as $file) {
-                $this->import_file($context, $component,  $filearea, $itemid, $file);
+                $this->import_file($contextid, $component,  $filearea, $itemid, $file);
             }
         }
-        return trim($field['text']);
+        return trim($field);
     }
-
-
-
-
     public function save_answer_true_false($question, $answerOpt)
     {
-        global $DB;
 
-        // $transaction = new moodle_transaction($DB);
-        // $transaction = $DB->start_delegated_transaction(); //If an exception is thrown in the below code, all DB queries in this code will be rollback.
+        global $DB;
         $context = $question->contextid;
         // Fetch old answer ids so that we can reuse them.
         $oldanswers = $DB->get_records(
@@ -93,52 +88,63 @@ class TrueFalseAnswer extends question_type
         );
 
         // Save the true answer - update an existing answer if possible.
+
         $answer = array_shift($oldanswers);
         if (!$answer) {
             $true_answer = new stdClass();
             $true_answer->question = $question->id;
-            $true_answer->answer = $answerOpt[0]['answer'];
+            $true_answer->answer = '';
             $true_answer->feedback = '';
             $true_answer->id = $DB->insert_record('question_answers', $true_answer);
         }
 
-        $true_answer->answer   = get_string($answerOpt[0]['answer'], 'qtype_truefalse');
-        $true_answer->fraction = 1;
-        $true_answer->feedback = $answerOpt[0]['tfeedback'];/* $this->import_or_save_files(
-            $answerOpt[0]['tfeedback'],
+        $true_answer->answer   = get_string('true', 'qtype_truefalse');
+        $true_answer->fraction = $answerOpt[0]['answer'];
+        $true_answer->feedback = $this->import_or_save_files(
+            $answerOpt[0]['rfeedback'],
             $context,
             'question',
             'answerfeedback',
-            $true_answer->id
-        ); */
+            $answer->id
+        );
+
+
         $true_answer->feedbackformat = $question->generalfeedbackformat;
 
-        $DB->update_record('question_answers', $true_answer);
-        $trueid =  $true_answer->id;
-        // Save the false answer - update an existing answer if possible.
-        $answer = array_shift($oldanswers);
-        if (!$answer) {
-            $fasle_answer = new stdClass();
-            $fasle_answer->question = $question->id;
-            $fasle_answer->answer = '';
-            $fasle_answer->feedback = $answerOpt[0]['ffeedback'];
-            $fasle_answer->id = $DB->insert_record('question_answers', $fasle_answer);
+        if (isset($question->state)) {
+            $true_answer->id = $answer->id;
+            $DB->update_record_raw('question_answers', $true_answer);
         }
 
-        $fasle_answer->answer   = get_string('false', 'qtype_truefalse');
-        $fasle_answer->fraction = 1 - (int)$question->defaultmark;
-        $fasle_answer->feedback = $answerOpt[0]['ffeedback'];/* $this->import_or_save_files(
-            $answerOpt[0]['ffeedback'],
+        $trueid =  $true_answer->id;
+        // Save the false answer - update an existing answer if possible.
+
+        $answer = array_shift($oldanswers);
+        if (!$answer) {
+            $false_answer = new stdClass();
+            $false_answer->question = $question->id;
+            $false_answer->answer = '';
+            $false_answer->feedback = '';
+            $false_answer->id = $DB->insert_record('question_answers', $false_answer);
+        }
+
+        $false_answer->answer   = get_string('false', 'qtype_truefalse');
+        $false_answer->fraction = 1 - (int)$answerOpt[0]['answer'];
+        $false_answer->feedback = $this->import_or_save_files(
+            $answerOpt[0]['wfeedback'],
             $context,
             'question',
             'answerfeedback',
-            $fasle_answer->id */
-        // );
-        $fasle_answer->feedbackformat = $question->generalfeedbackformat;
+            $answer->id
+        );
+        $false_answer->feedbackformat = $question->generalfeedbackformat;
+        // /* just for updateing 
+        if (isset($question->state)) {
+            $false_answer->id = $answer->id;
+            $DB->update_record_raw('question_answers', $false_answer);
+        }
 
-        // $DB->execute('UPDATE question_answers SET', )
-        $DB->update_record('question_answers', $fasle_answer);
-        $falseid = $fasle_answer->id;
+        $falseid = $false_answer->id;
 
 
         // Delete any left over old answer records.
@@ -163,7 +169,7 @@ class TrueFalseAnswer extends question_type
             $options->falseanswer = $falseid;
             $DB->insert_record('question_truefalse', $options);
         }
-        // $transaction->allow_commit();
+
 
         // $this->save_hints($question);
 

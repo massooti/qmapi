@@ -31,16 +31,7 @@ require_once($CFG->libdir . '/formslib.php');
 require_once(__DIR__     . '/types/TrueFalseQuestion.php');
 require_once(__DIR__     . '/answers/TrueFalseAnswer.php');
 
-
-const QUESTION_TYPE  =  array(
-    'truefalse',
-    'match',
-    'multichoice',
-    'shortanswer',
-    'essay',
-);
-
-class QuestionBuilder
+class QuestionEditor
 {
     private static $questiontypes = array();
 
@@ -126,12 +117,10 @@ class QuestionBuilder
      * @param object $quiz containing the quiz information which question is made for.
      * @param object $question containg the question information.
      */
-    private function slotMaker(object $quiz = null, object $question, $maxmark = null)
+    private function slotMaker(object $quiz, object $question, $maxmark = null)
     {
         global $DB;
-        if (empty($quiz)) {
-            return;
-        }
+
         $slots = $DB->get_records(
             'quiz_slots',
             array('quizid' => $quiz->id),
@@ -206,83 +195,40 @@ class QuestionBuilder
      * @return array question , and some extra information. 
      */
 
-    public function questionMaker($parameter)
+    public function questionsEditor($parameter)
     {
 
         global $DB, $USER;
-        $qtypeobj = $this->get_qtype($parameter[0]['type']);
-        $quizName = 'System';
-        $course_id = 1;
-        if ($parameter[0]['quizid'] > 0) {
-            $quiz = $DB->get_record('quiz', array('id' => $parameter[0]['quizid']));
-            $quizName = $quiz->name;
-            $course_id = $DB->get_field('quiz', 'course', array('id' => $parameter[0]['quizid']));
-        }
 
-        $course = $DB->get_record('course', array('id' => $course_id));
-        $courseContext = context_course::instance($course_id);
-
-
-        $contexts = new question_edit_contexts($courseContext);
-
-        //get question category object
-        if ($parameter[0]['question_category'] != 0) {
-
-            $category = $DB->get_record('question_categories', array('id' => $parameter[0]['question_category']));
-            $category = $category ?: $this->categoryMaker($courseContext->id, $quizName);
-        } elseif ($parameter[0]['question_category'] == 0) {
-
-            $category = $DB->get_record_sql("SELECT * FROM mdl_question_categories WHERE contextid = 1 AND NOT name = 'top'");
-        }
+        $category  = $DB->get_record('question_categories', array('id' => $parameter['category']));
 
         $question = new stdClass();
-        $question->quizid = $quiz->id ?: null;
-        $question->quizName = $quizName;
-        $question->category = $category->id;
-        $question->qtype = $parameter[0]['type'];
+        $question->state = 'edit';
+        $question->id = $parameter['id'];
+        $question->category = $parameter['category'];
+        $question->name      = $parameter['name'];
+        $question->qtype = $parameter['qtype'];
         $question->createdby = $USER->id;
-        // Check that users are allowed to create this question type at the moment.
-        if (!question_bank::qtype_enabled($parameter[0]['type'])) {
-            print_error('can not make question due to UNKNOWN ERROR');
-        }
 
         // Check permissions
         $question->formoptions = new stdClass();
         $categorycontext = context::instance_by_id($category->contextid);
-        $question->contextid = $courseContext->id;
+        $question->contextid = $category->contextid;
         $addpermission = has_capability('moodle/question:add', $categorycontext);
-
 
         $question->formoptions->canedit = question_has_capability_on($question, 'edit');
         $question->formoptions->canmove = (question_has_capability_on($question, 'move') && $addpermission);
         $question->formoptions->cansaveasnew = false;
         $question->formoptions->repeatelements = true;
         $formeditable = true;
-        require_capability('moodle/question:add', $categorycontext);
+        require_capability('moodle/question:editall', $categorycontext);
 
         $question->formoptions->mustbeusable = false;
-
-        $mform = $qtypeobj->create_editing_form('question.php', $question, $category, $contexts, $formeditable);
-
-        $toform = fullclone($question); // send the question object and a few more parameters to the form
-        $toform->category  = "{$category->id},{$category->contextid}";
-        $toform->scrollpos = 0;
-        $toform->makecopy  = 0;
-        $toform->courseid  = $course_id;
-        $toform->inpopup = 0;
-        // $mform->set_data($toform);
-        // $fromform = $mform->get_data();
-
-        $parameter[0]['course'] = $course;
-
-
-        switch ($parameter[0]['type']) {
+        $parameterArray = array(0 => $parameter);
+        switch ($parameter['qtype']) {
             case (QUESTION_TYPE[0]):
                 $truefalse = new TrueFalseQuestion();
-                $slot = $truefalse->save_question_true_false($question, $parameter);
-
-                $this->slotMaker($quiz, $question);
-                return $slot;
+                return  $truefalse->save_question_true_false($question, $parameterArray);
                 break;
             case (QUESTION_TYPE[1]):
                 return false;
@@ -293,7 +239,7 @@ class QuestionBuilder
     }
 }
 
-class AnswerBuilder
+class AnswerEditor
 {
 
     // /** @var string the answer. */
@@ -309,7 +255,7 @@ class AnswerBuilder
     // public $feedback;
 
     /** @var integer one of the FORMAT_... constans. */
-    public $feedbackformat;
+    // public $feedbackformat;
     /** @var string one type of question type */
     private $questionType;
     /**object of question given to the answer wich is going to create */
@@ -327,7 +273,7 @@ class AnswerBuilder
         global $DB;
 
         $this->questionObject = $question['question'];
-        $this->questionId = $question['id'];
+        // $this->questionId = $question['id'];
         $this->questionType = $question['type'];
 
         // $context = $question;
@@ -381,11 +327,13 @@ class AnswerBuilder
      *
      * @return mixed array as above, or null to tell the base class to do nothing.
      */
-    public function answerMaker(array $answer)
+    public function answerEditor(array $answer)
     {
         global $DB;
+
         switch ($this->questionType) {
             case (QUESTION_TYPE[0]):
+
                 $truefalse = new TrueFalseAnswer();
                 return $truefalse->save_answer_true_false($this->questionObject, $answer);
                 break;
